@@ -122,4 +122,16 @@ public class FileAuthenticator implements IAuthenticator {
         return foundPwq.equals(encodedPasswd);
     }
     
+    public static void main(String[] args) {
+    	try {
+			MessageDigest m_digest = MessageDigest.getInstance("SHA-256");
+			m_digest.update("0d6be69b264717f2dd33652e212b173104b4a647b7c11ae72e9885f11cd312fb".getBytes("UTF-8"));
+
+	        byte[] digest = m_digest.digest();
+	        String encodedPasswd = new String(Hex.encodeHex(digest));
+	        System.out.println(encodedPasswd);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }
