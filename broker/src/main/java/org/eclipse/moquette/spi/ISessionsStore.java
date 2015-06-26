@@ -30,7 +30,12 @@ public interface ISessionsStore {
     /**
      * Add a new subscription to the session
      */
-    void addNewSubscription(Subscription newSubscription, String clientID);
+    void addNewSubscription(Subscription newSubscription);
+
+    /**
+     * Removed a specific subscription
+     * */
+    void removeSubscription(String topic, String clientID);
 
     /**
      * Remove all the subscriptions of the session

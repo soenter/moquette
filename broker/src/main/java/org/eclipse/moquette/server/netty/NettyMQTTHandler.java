@@ -54,15 +54,15 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
                 case PUBREL:
                 case DISCONNECT:
                 case PUBACK:    
-                    NettyChannel channel;
-                    synchronized(m_channelMapper) {
-                        if (!m_channelMapper.containsKey(ctx)) {
-                            m_channelMapper.put(ctx, new NettyChannel(ctx));
-                        }
-                        channel = m_channelMapper.get(ctx);
-                    }
+//                    NettyChannel channel;
+//                    synchronized(m_channelMapper) {
+//                        if (!m_channelMapper.containsKey(ctx)) {
+//                            m_channelMapper.put(ctx, new NettyChannel(ctx));
+//                        }
+//                        channel = m_channelMapper.get(ctx);
+//                    }
                     
-                    m_messaging.handleProtocolMessage(channel, msg);
+                    m_messaging.handleProtocolMessage(new NettyChannel(ctx), msg);
                     break;
                 case PINGREQ:
                     PingRespMessage pingResp = new PingRespMessage();
@@ -77,12 +77,8 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         NettyChannel channel = m_channelMapper.get(ctx);
-        if(channel != null){
-            String clientID = (String) channel.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
-            m_messaging.lostConnection(channel, clientID);
-        } else {
-            LOG.error("m_channelMapper get null {} NettyChannel", ctx.toString());
-        }
+        String clientID = (String) channel.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
+        m_messaging.lostConnection(channel, clientID);
         ctx.close(/*false*/);
         synchronized(m_channelMapper) {
             m_channelMapper.remove(ctx);

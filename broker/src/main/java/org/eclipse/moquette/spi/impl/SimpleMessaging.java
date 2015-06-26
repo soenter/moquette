@@ -20,7 +20,7 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import org.HdrHistogram.Histogram;
 import org.eclipse.moquette.proto.messages.AbstractMessage;
-import org.eclipse.moquette.server.IAuthenticator;
+import org.eclipse.moquette.spi.impl.security.*;
 import org.eclipse.moquette.server.ServerChannel;
 import org.eclipse.moquette.spi.IMessagesStore;
 import org.eclipse.moquette.spi.IMessaging;
@@ -34,6 +34,10 @@ import org.eclipse.moquette.spi.persistence.MapDBPersistentStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.text.ParseException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -42,7 +46,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.eclipse.moquette.commons.Constants.PASSWORD_FILE_PROPERTY_NAME;
 import static org.eclipse.moquette.commons.Constants.PERSISTENT_STORE_PROPERTY_NAME;
-import static org.eclipse.moquette.commons.Constants.ALLOW_ANONYMOUS;
+import static org.eclipse.moquette.commons.Constants.ALLOW_ANONYMOUS_PROPERTY_NAME;
+import static org.eclipse.moquette.commons.Constants.ACL_FILE_PROPERTY_NAME;
 
 /**
  *
@@ -117,8 +122,8 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     }
     
     @Override
-    public void lostConnection(ServerChannel session, String clientID) {
-        disruptorPublish(new LostConnectionEvent(session, clientID));
+    public void lostConnection(String clientID) {
+        disruptorPublish(new LostConnectionEvent(clientID));
     }
 
     @Override
@@ -148,6 +153,7 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
     @Override
     public void onEvent(ValueEvent t, long l, boolean bln) throws Exception {
         MessagingEvent evt = t.getEvent();
+        t.setEvent(null); //free the reference to all Netty stuff
         LOG.info("onEvent processing messaging event from input ringbuffer {}", evt);
         if (evt instanceof StopEvent) {
             processStop();
@@ -198,8 +204,24 @@ public class SimpleMessaging implements IMessaging, EventHandler<ValueEvent> {
             authenticator = new FileAuthenticator(configPath, passwdPath);
         }
 
-        boolean allowAnonymous = Boolean.parseBoolean(props.getProperty(ALLOW_ANONYMOUS, "true"));
-        m_processor.init(subscriptions, m_storageService, m_sessionsStore, authenticator, allowAnonymous);
+        String aclFilePath = props.getProperty(ACL_FILE_PROPERTY_NAME, "");
+        IAuthorizator authorizator;
+        if (aclFilePath != null && !aclFilePath.isEmpty()) {
+            authorizator = new DenyAllAuthorizator();
+            File aclFile = new File(configPath, aclFilePath);
+            try {
+                authorizator = ACLFileParser.parse(aclFile);
+            } catch (ParseException pex) {
+                LOG.error(String.format("Format error in parsing acl file %s", aclFile), pex);
+            }
+            LOG.info("Using acl file defined at path {}", aclFilePath);
+        } else {
+            authorizator = new PermitAllAuthorizator();
+            LOG.info("Starting without ACL definition");
+        }
+
+        boolean allowAnonymous = Boolean.parseBoolean(props.getProperty(ALLOW_ANONYMOUS_PROPERTY_NAME, "true"));
+        m_processor.init(subscriptions, m_storageService, m_sessionsStore, authenticator, allowAnonymous, authorizator);
     }
 
 

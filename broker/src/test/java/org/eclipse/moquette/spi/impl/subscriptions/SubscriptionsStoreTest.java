@@ -117,7 +117,7 @@ public class SubscriptionsStoreTest {
         store.add(anySub);
         assertTrue(store.matches("finance").contains(anySub));
         
-        Subscription financeAnySub = new Subscription("FAKE_CLI_ID_1", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
+        Subscription financeAnySub = new Subscription("FAKE_CLI_ID_2", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(financeAnySub);
         assertTrue(store.matches("finance").containsAll(Arrays.asList(financeAnySub, anySub)));
     }
@@ -125,7 +125,7 @@ public class SubscriptionsStoreTest {
     @Test
     public void testMatchingDeepMulti_one_layer() {
         Subscription anySub = new Subscription("FAKE_CLI_ID_1", "#", AbstractMessage.QOSType.MOST_ONE, false);
-        Subscription financeAnySub = new Subscription("FAKE_CLI_ID_1", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
+        Subscription financeAnySub = new Subscription("FAKE_CLI_ID_2", "finance/#", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(anySub);
         store.add(financeAnySub);
         
@@ -184,7 +184,7 @@ public class SubscriptionsStoreTest {
         Subscription slashPlusSub = new Subscription("FAKE_CLI_ID_1", "/finance/+/ibm", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(slashPlusSub);
         
-        Subscription slashPlusDeepSub = new Subscription("FAKE_CLI_ID_1", "/+/stock/+", AbstractMessage.QOSType.MOST_ONE, false);
+        Subscription slashPlusDeepSub = new Subscription("FAKE_CLI_ID_2", "/+/stock/+", AbstractMessage.QOSType.MOST_ONE, false);
         store.add(slashPlusDeepSub);
         
         //Verify
@@ -271,6 +271,19 @@ public class SubscriptionsStoreTest {
     }
 
     @Test
+    public void testOverlappingSubscriptions() {
+        Subscription genericSub = new Subscription("FAKE_CLI_ID_1", "a/+", AbstractMessage.QOSType.EXACTLY_ONCE, false);
+        store.add(genericSub);
+        Subscription specificSub = new Subscription("FAKE_CLI_ID_1", "a/b", AbstractMessage.QOSType.LEAST_ONE, false);
+        store.add(specificSub);
+
+        //Verify
+        assertEquals(1, store.matches("a/b").size());
+        //assertTrue(store.matches("/finance").contains(slashPlusSub));
+        //assertFalse(store.matches("/finance").contains(anySub));
+    }
+
+    @Test
     public void testMatchTopics_simple() {
         assertTrue(SubscriptionsStore.matchTopics("/", "/"));
         assertTrue(SubscriptionsStore.matchTopics("/finance", "/finance"));
@@ -354,6 +367,28 @@ public class SubscriptionsStoreTest {
         assertEquals(1, subscriptions.size());
         Subscription sub = subscriptions.get(0);
         assertEquals(overrindingSubscription.getRequestedQos(), sub.getRequestedQos());
+    }
+
+    /*
+    Test for Issue #49
+    * */
+    @Test
+    public void duplicatedSubscriptionsWithDifferentQos() {
+        Subscription client2Sub = new Subscription("client2", "client/test/b", AbstractMessage.QOSType.MOST_ONE, true);
+        store.add(client2Sub);
+        Subscription client1SubQoS0 = new Subscription("client1", "client/test/b", AbstractMessage.QOSType.MOST_ONE, true);
+        store.add(client1SubQoS0);
+
+        Subscription client1SubQoS2 = new Subscription("client1", "client/test/b", AbstractMessage.QOSType.EXACTLY_ONCE, true);
+        store.add(client1SubQoS2);
+
+        System.out.println(store.dumpTree());
+
+        //Verify
+        List<Subscription> subscriptions = store.matches("client/test/b");
+        assertTrue(subscriptions.contains(client1SubQoS2));
+        assertTrue(subscriptions.contains(client2Sub));
+        assertFalse(subscriptions.contains(client1SubQoS0)); //client1SubQoS2 should override client1SubQoS0
     }
 
     private static Token[] asArray(Object... l) {

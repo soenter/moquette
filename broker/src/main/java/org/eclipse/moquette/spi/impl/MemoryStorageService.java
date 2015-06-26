@@ -102,10 +102,14 @@ public class MemoryStorageService implements IMessagesStore, ISessionsStore {
     }
     
     @Override
-    public void removeMessageInSession(String clientID, int messageID) {
+    public void removeMessageInSession(String clientID, Integer messageID) {
         List<PublishEvent> events = m_persistentMessageStore.get(clientID);
         PublishEvent toRemoveEvt = null;
         for (PublishEvent evt : events) {
+            if (evt.getMessageID() == null && messageID == null) {
+                //was a qos0 message (no ID)
+                toRemoveEvt = evt;
+            }
             if (evt.getMessageID() == messageID) {
                 toRemoveEvt = evt;
             }
@@ -155,7 +159,29 @@ public class MemoryStorageService implements IMessagesStore, ISessionsStore {
     }
 
     @Override
-    public void addNewSubscription(Subscription newSubscription, String clientID) {
+    public void removeSubscription(String topic, String clientID) {
+        LOG.debug("removeSubscription topic filter: {} for clientID: {}", topic, clientID);
+        if (!m_persistentSubscriptions.containsKey(clientID)) {
+            return;
+        }
+        Set<Subscription> clientSubscriptions = m_persistentSubscriptions.get(clientID);
+        //search for the subscription to remove
+        Subscription toBeRemoved = null;
+        for (Subscription sub : clientSubscriptions) {
+            if (sub.getTopicFilter().equals(topic)) {
+                toBeRemoved = sub;
+                break;
+            }
+        }
+
+        if (toBeRemoved != null) {
+            clientSubscriptions.remove(toBeRemoved);
+        }
+    }
+
+    @Override
+    public void addNewSubscription(Subscription newSubscription) {
+        final String clientID = newSubscription.getClientId();
         if (!m_persistentSubscriptions.containsKey(clientID)) {
             m_persistentSubscriptions.put(clientID, new HashSet<Subscription>());
         }

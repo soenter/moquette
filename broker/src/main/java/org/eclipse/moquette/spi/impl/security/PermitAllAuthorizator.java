@@ -13,14 +13,19 @@
  *
  * You may elect to redistribute this code under either of these licenses.
  */
-package org.eclipse.moquette.server;
+package org.eclipse.moquette.spi.impl.security;
 
 /**
- * username and password checker
- * 
  * @author andrea
  */
-public interface IAuthenticator {
+public class PermitAllAuthorizator implements IAuthorizator {
+    @Override
+    public boolean canWrite(String topic, String user, String client) {
+        return true;
+    }
 
-    boolean checkValid(String username, String password);
+    @Override
+    public boolean canRead(String topic, String user, String client) {
+        return true;
+    }
 }
