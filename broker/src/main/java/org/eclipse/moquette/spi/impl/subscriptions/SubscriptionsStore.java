@@ -30,38 +30,61 @@ import org.slf4j.LoggerFactory;
  */
 public class SubscriptionsStore {
 
+    /**
+     * Check if the topic filter of the subscription is well formed
+     * */
+    public static boolean validate(Subscription newSubscription) {
+        try {
+            parseTopic(newSubscription.topicFilter);
+            return true;
+        } catch (ParseException pex) {
+            LOG.info("Bad matching topic filter <{}>", newSubscription.topicFilter);
+            return false;
+        }
+    }
+
     public static interface IVisitor<T> {
-        void visit(TreeNode node);
-        
+        void visit(TreeNode node, int deep);
+
         T getResult();
     }
-    
+
     private class DumpTreeVisitor implements IVisitor<String> {
-        
+
         String s = "";
 
-        public void visit(TreeNode node) {
+        public void visit(TreeNode node, int deep) {
             String subScriptionsStr = "";
+            String indentTabs = indentTabs(deep);
             for (Subscription sub : node.m_subscriptions) {
-                subScriptionsStr += sub.toString();
+                subScriptionsStr += indentTabs + sub.toString() + "\n";
             }
             s += node.getToken() == null ? "" : node.getToken().toString();
-            s += subScriptionsStr + "\n";
+            s +=  "\n" + (node.m_subscriptions.isEmpty() ? indentTabs : "") + subScriptionsStr /*+ "\n"*/;
         }
-        
+
+        private String indentTabs(int deep) {
+            String s = "";
+            for (int i=0; i < deep; i++) {
+                s += "\t";
+//                s += "--";
+            }
+            return s;
+        }
+
         public String getResult() {
             return s;
         }
     }
-    
+
     private class SubscriptionTreeCollector implements IVisitor<List<Subscription>> {
-        
+
         private List<Subscription> m_allSubscriptions = new ArrayList<Subscription>();
 
-        public void visit(TreeNode node) {
+        public void visit(TreeNode node, int deep) {
             m_allSubscriptions.addAll(node.subscriptions());
         }
-        
+
         public List<Subscription> getResult() {
             return m_allSubscriptions;
         }
@@ -91,14 +114,14 @@ public class SubscriptionsStore {
             LOG.debug("Finished loading. Subscription tree after {}", dumpTree());
         }
     }
-    
+
     protected void addDirect(Subscription newSubscription) {
         TreeNode current = findMatchingNode(newSubscription.topicFilter);
         current.addSubscription(newSubscription);
     }
-    
+
     private TreeNode findMatchingNode(String topic) {
-        List<Token> tokens = new ArrayList<Token>();
+        List<Token> tokens = new ArrayList<>();
         try {
             tokens = parseTopic(topic);
         } catch (ParseException ex) {
@@ -136,7 +159,7 @@ public class SubscriptionsStore {
 
     public void removeSubscription(String topic, String clientID) {
         TreeNode matchNode = findMatchingNode(topic);
-        
+
         //search for the subscription to remove
         Subscription toBeRemoved = null;
         for (Subscription sub : matchNode.subscriptions()) {
@@ -145,19 +168,19 @@ public class SubscriptionsStore {
                 break;
             }
         }
-        
+
         if (toBeRemoved != null) {
             matchNode.subscriptions().remove(toBeRemoved);
         }
     }
-    
+
     /**
      * TODO implement testing
      */
     public void clearAllSubscriptions() {
         SubscriptionTreeCollector subsCollector = new SubscriptionTreeCollector();
-        bfsVisit(subscriptions, subsCollector);
-        
+        bfsVisit(subscriptions, subsCollector, 0);
+
         List<Subscription> allSubscriptions = subsCollector.getResult();
         for (Subscription subscription : allSubscriptions) {
             removeSubscription(subscription.getTopicFilter(), subscription.getClientId());
@@ -203,10 +226,20 @@ public class SubscriptionsStore {
             return Collections.emptyList();
         }
 
-        Queue<Token> tokenQueue = new LinkedBlockingDeque<Token>(tokens);
-        List<Subscription> matchingSubs = new ArrayList<Subscription>();
+        Queue<Token> tokenQueue = new LinkedBlockingDeque<>(tokens);
+        List<Subscription> matchingSubs = new ArrayList<>();
         subscriptions.matches(tokenQueue, matchingSubs);
-        return matchingSubs;
+
+        //remove the overlapping subscriptions, selecting ones with greatest qos
+        Map<String, Subscription> subsForClient = new HashMap<>();
+        for (Subscription sub : matchingSubs) {
+            Subscription existingSub = subsForClient.get(sub.getClientId());
+            //update the selected subscriptions if not present or if has a greater qos
+            if (existingSub == null || existingSub.getRequestedQos().ordinal() < sub.getRequestedQos().ordinal()) {
+                subsForClient.put(sub.getClientId(), sub);
+            }
+        }
+        return /*matchingSubs*/new ArrayList<>(subsForClient.values());
     }
 
     public boolean contains(Subscription sub) {
@@ -216,23 +249,23 @@ public class SubscriptionsStore {
     public int size() {
         return subscriptions.size();
     }
-    
+
     public String dumpTree() {
         DumpTreeVisitor visitor = new DumpTreeVisitor();
-        bfsVisit(subscriptions, visitor);
+        bfsVisit(subscriptions, visitor, 0);
         return visitor.getResult();
     }
-    
-    private void bfsVisit(TreeNode node, IVisitor visitor) {
+
+    private void bfsVisit(TreeNode node, IVisitor visitor, int deep) {
         if (node == null) {
             return;
         }
-        visitor.visit(node);
+        visitor.visit(node, deep);
         for (TreeNode child : node.m_children) {
-            bfsVisit(child, visitor);
+            bfsVisit(child, visitor, ++deep);
         }
     }
-    
+
     /**
      * Verify if the 2 topics matching respecting the rules of MQTT Appendix A
      */
@@ -272,7 +305,7 @@ public class SubscriptionsStore {
             throw new RuntimeException(ex);
         }
     }
-    
+
     protected static List<Token> parseTopic(String topic) throws ParseException {
         List<Token> res = new ArrayList<>();
         String[] splitted = topic.split("/");
@@ -280,15 +313,15 @@ public class SubscriptionsStore {
         if (splitted.length == 0) {
             res.add(Token.EMPTY);
         }
-        
+
         if (topic.endsWith("/")) {
             //Add a fictious space 
             String[] newSplitted = new String[splitted.length + 1];
-            System.arraycopy(splitted, 0, newSplitted, 0, splitted.length); 
+            System.arraycopy(splitted, 0, newSplitted, 0, splitted.length);
             newSplitted[splitted.length] = "";
             splitted = newSplitted;
         }
-        
+
         for (int i = 0; i < splitted.length; i++) {
             String s = splitted[i];
             if (s.isEmpty()) {

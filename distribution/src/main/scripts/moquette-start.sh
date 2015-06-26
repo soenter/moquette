@@ -1,4 +1,18 @@
 #!/bin/sh
+
+echo "                                                                         "
+echo "  ___  ___                       _   _        ___  ________ _____ _____  "
+echo "  |  \/  |                      | | | |       |  \/  |  _  |_   _|_   _| "
+echo "  | .  . | ___   __ _ _   _  ___| |_| |_ ___  | .  . | | | | | |   | |   "
+echo "  | |\/| |/ _ \ / _\ | | | |/ _ \ __| __/ _ \ | |\/| | | | | | |   | |   "
+echo "  | |  | | (_) | (_| | |_| |  __/ |_| ||  __/ | |  | \ \/' / | |   | |   "
+echo "  \_|  |_/\___/ \__, |\__,_|\___|\__|\__\___| \_|  |_/\_/\_\ \_/   \_/   "
+echo "                   | |                                                   "
+echo "                   |_|                                                   "
+echo "                                                                         "
+
+
+
 #echo `pwd`
 
 export LANG=zh_CN.UTF-8
@@ -35,14 +49,14 @@ done
 #-XX:G1ReservePercent=n	设置作为空闲空间的预留内存百分比，以降低目标空间溢出的风险。默认值是 10%。
 #-XX:G1HeapRegionSize=n	设置的 G1 区域的大小。值是2的幂，范围是1 MB 到32 MB。目标是根据最小的 Java 堆大小划分出约 2048 个区域。
 
-JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=400 -XX:+HeapDumpOnOutOfMemoryError 
--XX:HeapDumpPath=logs/product.memory.dump -XX:+PrintGCDetails -XX:+PrintGCTimeStamps 
--XX:+PrintGCApplicationStoppedTime -Xloggc:logs/abacus/product.gc.log
--Darchaius.configurationSource.additionalUrls=file://${CURRENT_DIR}/config/config.properties
--Dlogback.configurationFile=${CURRENT_DIR}/config/logback.xml
-
+JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=400 -XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=logs/moquette/moquette.memory.dump -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
+-XX:+PrintGCApplicationStoppedTime -Xloggc:logs/moquette/moquette.gc.log
+-XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true
+-Dlog4j.configuration=file://${CURRENT_DIR}/config/log4j.properties
+-Dmoquette.path="$CURRENT_DIR"
 "
 
-java $JAVA_OPTS -classpath $CLASSPATH com.sand.abacus.product.bootstrap.ProductBootstrap
+java $JAVA_OPTS -classpath $CLASSPATH org.eclipse.moquette.server.Server
 
 exit 0

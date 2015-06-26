@@ -32,7 +32,7 @@ broker/runner
 *.war
 *.ear
 moquette_store.mapdb
-moquette_store.mapdb.wal*
+moquette_store.mapdb.*
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*

@@ -40,6 +40,8 @@ public class ServerIntegrationFuseTest {
     MQTT m_mqtt;
     BlockingConnection m_subscriber;
     BlockingConnection m_publisher;
+
+    String host = "172.28.250.240";
     
     protected void startServer() throws IOException {
         m_server = new Server();
@@ -51,7 +53,7 @@ public class ServerIntegrationFuseTest {
         startServer();
 
         m_mqtt = new MQTT();
-        m_mqtt.setHost("localhost", 31883);
+        m_mqtt.setHost(host, 31883);
     }
 
     @After
@@ -78,7 +80,7 @@ public class ServerIntegrationFuseTest {
     public void connectWithCredentials() throws Exception {
         LOG.info("*** connectWithCredetials ***");
         MQTT mqtt = new MQTT();
-        mqtt.setHost("localhost", 31883); 
+        mqtt.setHost(host, 31884);
         mqtt.setClientId("Publisher");
         mqtt.setUserName("testuser");
         mqtt.setPassword("passwd");
@@ -97,7 +99,7 @@ public class ServerIntegrationFuseTest {
         String willTestamentMsg = "Bye bye";
         
         MQTT mqtt = new MQTT();
-        mqtt.setHost("localhost", 31883); 
+        mqtt.setHost(host, 31883); 
         mqtt.setClientId("WillTestamentPublisher");
         mqtt.setWillRetain(false);
         mqtt.setWillMessage(willTestamentMsg);
@@ -105,7 +107,7 @@ public class ServerIntegrationFuseTest {
         m_publisher = mqtt.blockingConnection();
         m_publisher.connect();
         
-        m_mqtt.setHost("localhost", 31883); 
+        m_mqtt.setHost(host, 31883); 
         m_mqtt.setCleanSession(false);
         m_mqtt.setClientId("Subscriber");
         m_subscriber = m_mqtt.blockingConnection();
@@ -128,12 +130,12 @@ public class ServerIntegrationFuseTest {
     public void checkReplayofStoredPublishResumeAfter_a_disconnect_cleanSessionFalseQoS1() throws Exception {
         LOG.info("*** checkReplayofStoredPublishResumeAfter_a_disconnect_cleanSessionFalseQoS1 ***");
         MQTT mqtt = new MQTT();
-        mqtt.setHost("localhost", 31883); 
+        mqtt.setHost(host, 31883); 
         mqtt.setClientId("Publisher");
         m_publisher = mqtt.blockingConnection();
         m_publisher.connect();
         
-        m_mqtt.setHost("localhost", 31883); 
+        m_mqtt.setHost(host, 31883); 
         m_mqtt.setCleanSession(false);
         m_mqtt.setClientId("Subscriber");
         m_subscriber = m_mqtt.blockingConnection();
@@ -172,12 +174,12 @@ public class ServerIntegrationFuseTest {
     public void checkReplayStoredPublish_forNoCleanSession_qos1() throws Exception {
         LOG.info("*** checkReplayStoredPublish_forNoCleanSession_qos1 ***");
         MQTT mqtt = new MQTT();
-        mqtt.setHost("localhost", 31883); 
+        mqtt.setHost(host, 31883); 
         mqtt.setClientId("Publisher");
         m_publisher = mqtt.blockingConnection();
         m_publisher.connect();
         
-        m_mqtt.setHost("localhost", 31883); 
+        m_mqtt.setHost(host, 31883); 
         m_mqtt.setCleanSession(false);
         m_mqtt.setClientId("Subscriber");
         m_subscriber = m_mqtt.blockingConnection();
@@ -210,7 +212,7 @@ public class ServerIntegrationFuseTest {
     @Test
     public void checkQoS2SuscriberDisconnectReceivePersistedPublishes() throws Exception {
         LOG.info("*** checkQoS2SuscriberDisconnectReceivePersistedPublishes ***");
-        m_mqtt.setHost("localhost", 31883); 
+        m_mqtt.setHost("172.28.250.240", 31883);
         m_mqtt.setCleanSession(false);
         m_mqtt.setClientId("Subscriber");
         m_subscriber = m_mqtt.blockingConnection();
@@ -220,7 +222,7 @@ public class ServerIntegrationFuseTest {
         m_subscriber.disconnect();
 
         MQTT mqtt = new MQTT();
-        mqtt.setHost("localhost", 31883); 
+        mqtt.setHost(host, 31883); 
         mqtt.setClientId("Publisher");
         m_publisher = mqtt.blockingConnection();
         m_publisher.connect();
@@ -230,7 +232,7 @@ public class ServerIntegrationFuseTest {
 
         //subscriber reconnects
         m_mqtt = new MQTT();
-        m_mqtt.setHost("localhost", 31883); 
+        m_mqtt.setHost(host, 31883); 
         m_mqtt.setClientId("Subscriber");
         m_mqtt.setCleanSession(false);
         m_subscriber = m_mqtt.blockingConnection();
@@ -255,12 +257,12 @@ public class ServerIntegrationFuseTest {
     public void checkSinglePublishOnOverlappingSubscriptions() throws Exception {
         LOG.info("*** checkSinglePublishOnOverlappingSubscriptions ***");
         MQTT mqtt = new MQTT();
-        mqtt.setHost("localhost", 1883);
+        mqtt.setHost(host, 1883);
         mqtt.setClientId("Publisher");
         m_publisher = mqtt.blockingConnection();
         m_publisher.connect();
 
-        m_mqtt.setHost("localhost", 1883);
+        m_mqtt.setHost(host, 1883);
         m_mqtt.setCleanSession(false);
         m_mqtt.setClientId("Subscriber");
         m_subscriber = m_mqtt.blockingConnection();
