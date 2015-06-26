@@ -81,7 +81,7 @@ public class NettyMQTTHandler extends ChannelInboundHandlerAdapter {
             String clientID = (String) channel.getAttribute(NettyChannel.ATTR_KEY_CLIENTID);
             m_messaging.lostConnection(channel, clientID);
         } else {
-            LOG.error("m_channelMapper get null{} NettyChannel", ctx.toString());
+            LOG.error("m_channelMapper get null {} NettyChannel", ctx.toString());
         }
         ctx.close(/*false*/);
         synchronized(m_channelMapper) {
